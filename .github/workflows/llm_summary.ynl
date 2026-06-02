@@ -1,0 +1,37 @@
+name: LLM Summary Pipeline
+
+on:
+  push:
+    paths:
+      - "inputs/**"          # Se déclenche seulement si inputs/ change
+  workflow_dispatch:         # Bouton manuel dans l'UI GitHub
+
+jobs:
+  summarize:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run dual LLM summarizer
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY:    ${{ secrets.OPENAI_API_KEY }}
+        run: python scripts/run_llm.py --provider both
+
+      - name: Commit outputs back to repo
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add outputs/
+          git diff --staged --quiet || git commit -m "chore: add LLM summaries [skip ci]"
+          git push
